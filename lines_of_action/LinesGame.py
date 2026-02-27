@@ -7,12 +7,12 @@ from .LinesLogic import Board
 import numpy as np
 
 
-class OthelloGame(Game):
+class LinesGame(Game):
     square_content = {-1: "", +0: "-", +1: ""}
 
     @staticmethod
     def getSquarePiece(stone):
-        return OthelloGame.square_content[stone]
+        return LinesGame.square_content[stone]
 
     def __init__(self, n):
         self.n = n
@@ -20,7 +20,7 @@ class OthelloGame(Game):
     def getInitBoard(self):
         # return initial board (numpy board)
         b = Board(self.n)
-        return np.array(b.stones)
+        return b.stones
 
     def getBoardSize(self):
         # (a,b) tuple
