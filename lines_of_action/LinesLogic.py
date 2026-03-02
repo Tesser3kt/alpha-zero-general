@@ -12,6 +12,7 @@ x is the column, y is the row.
 """
 
 import numpy as np
+import networkx as nx
 
 
 class Board:
@@ -46,18 +47,6 @@ class Board:
     # add [][] indexer syntax to the Board
     def __getitem__(self, index):
         return self.stones[index]
-
-    def countDiff(self, color):
-        """Counts the # pieces of the given color
-        (1 for black, -1 for white, 0 for empty spaces)"""
-        count = 0
-        for y in range(self.n):
-            for x in range(self.n):
-                if self[x, y] == color:
-                    count += 1
-                if self[x, y] == -color:
-                    count -= 1
-        return count
 
     def get_legal_moves(self, color):
         """Returns all the legal moves for the given color.
@@ -143,3 +132,20 @@ class Board:
         source, target = move
         self.stones[*source] = 0
         self.stones[*target] = color
+
+    def has_connected_stones(self, player):
+        """Checks if a player has all stones connected."""
+        G = nx.Graph()
+        player_stones = self.stones == player
+        for stone in player_stones:
+            x, y = stone
+            G.add_node((x, y))
+            for dir in self.__directions:
+                ngh_x, ngh_y = x + dir[0], y + dir[1]
+                if not (0 <= ngh_x < self.n and 0 <= ngh_y < self.n):
+                    continue
+
+                if self.stones[ngh_x, ngh_y] == player:
+                    G.add_edge((x, y), (ngh_x, ngh_y))
+
+        return nx.is_connected(G)

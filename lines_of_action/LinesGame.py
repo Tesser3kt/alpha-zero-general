@@ -5,6 +5,7 @@ sys.path.append("..")
 from Game import Game
 from .LinesLogic import Board
 import numpy as np
+from collections import deque
 
 
 class LinesGame(Game):
@@ -22,36 +23,43 @@ class LinesGame(Game):
         b = Board(self.n)
         return b.stones
 
-    def getBoardSize(self):
+    @property
+    def board_size(self):
         # (a,b) tuple
         return (self.n, self.n)
 
-    def getActionSize(self):
+    @property
+    def action_size(self):
         # return number of actions
-        return self.n * self.n + 1
+        return (self.n * self.n) * 2
 
     def getNextState(self, board, player, action):
         # if player takes action on board, return next (board,player)
-        # action must be a valid move
-        if action == self.n * self.n:
-            return (board, -player)
+        source = (action % self.n, action // self.n)
+        target = ((action - self.n**2) % self.n, (action - self.n**2) // self.n)
+
         b = Board(self.n)
         b.stones = np.copy(board)
-        move = (int(action / self.n), action % self.n)
+        # action must be valid
+        valid_moves = b.get_legal_moves(player)
+        if (source, target) not in valid_moves:
+            return (board, -player)
+
+        move = (source, target)
         b.execute_move(move, player)
         return (b.stones, -player)
 
     def getValidMoves(self, board, player):
         # return a fixed size binary vector
-        valids = [0] * self.getActionSize()
+        valids = [0] * self.action_size
         b = Board(self.n)
         b.stones = np.copy(board)
         legalMoves = b.get_legal_moves(player)
-        if len(legalMoves) == 0:
-            valids[-1] = 1
-            return np.array(valids)
-        for x, y in legalMoves:
-            valids[self.n * x + y] = 1
+        for source, target in legalMoves:
+            sx, sy = source
+            tx, ty = target
+            valids[self.n * sy + sx] = 1
+            valids[self.n**2 + self.n * ty + tx] = 1
         return np.array(valids)
 
     def getGameEnded(self, board, player):
@@ -59,13 +67,13 @@ class LinesGame(Game):
         # player = 1
         b = Board(self.n)
         b.stones = np.copy(board)
-        if b.has_legal_moves(player):
-            return 0
-        if b.has_legal_moves(-player):
-            return 0
-        if b.countDiff(player) > 0:
+
+        if b.has_connected_stones(player):
             return 1
-        return -1
+        elif b.has_connected_stones(-player):
+            return -1
+        else:
+            return 0
 
     def getCanonicalForm(self, board, player):
         # return state if player==1, else return -state if player==-1
