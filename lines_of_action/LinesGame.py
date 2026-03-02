@@ -9,7 +9,7 @@ from collections import deque
 
 
 class LinesGame(Game):
-    square_content = {-1: "", +0: "-", +1: ""}
+    square_content = {1: "", +0: "-", -1: ""}
 
     @staticmethod
     def getSquarePiece(stone):
@@ -28,15 +28,21 @@ class LinesGame(Game):
         # (a,b) tuple
         return (self.n, self.n)
 
+    def getBoardSize(self):
+        return self.board_size
+
     @property
     def action_size(self):
         # return number of actions
-        return (self.n * self.n) * 2
+        return (self.n * self.n) ** 2
+
+    def getActionSize(self):
+        return self.action_size
 
     def getNextState(self, board, player, action):
         # if player takes action on board, return next (board,player)
-        source = (action % self.n, action // self.n)
-        target = ((action - self.n**2) % self.n, (action - self.n**2) // self.n)
+        source = (action % self.n, (action // self.n) % self.n)
+        target = ((action // self.n**2) % self.n, action // self.n**3)
 
         b = Board(self.n)
         b.stones = np.copy(board)
@@ -58,8 +64,7 @@ class LinesGame(Game):
         for source, target in legalMoves:
             sx, sy = source
             tx, ty = target
-            valids[self.n * sy + sx] = 1
-            valids[self.n**2 + self.n * ty + tx] = 1
+            valids[sx + sy * self.n + tx * self.n**2 + ty * self.n**3] = 1
         return np.array(valids)
 
     def getGameEnded(self, board, player):
@@ -81,33 +86,43 @@ class LinesGame(Game):
 
     def getSymmetries(self, board, pi):
         # mirror, rotational
-        assert len(pi) == self.n**2 + 1  # 1 for pass
-        pi_board = np.reshape(pi[:-1], (self.n, self.n))
+        assert len(pi) == self.action_size
+        pi_board = np.reshape(pi, (self.n**2, self.n**2))
         l = []
 
         for i in range(1, 5):
             for j in [True, False]:
                 newB = np.rot90(board, i)
-                newPi = np.rot90(pi_board, i)
+                newPi = np.copy(pi_board)
+
+                pi_subarray = newPi[0:self.n, 0:self.n]
+                new_subarray = np.rot90(pi_subarray, i)
+                newPi[0:self.n, 0:self.n] = pi_subarray
+
+                pi_subarray = newPi[self.n:, self.n:]
+                new_subarray = np.rot90(pi_subarray, i)
+                newPi[self.n:, self.n:] = pi_subarray
                 if j:
                     newB = np.fliplr(newB)
-                    newPi = np.fliplr(newPi)
-                l += [(newB, list(newPi.ravel()) + [pi[-1]])]
+                    newPi = np.copy(pi_board)
+                    pi_subarray = newPi[0:self.n, 0:self.n]
+                    new_subarray = np.fliplr(pi_subarray)
+                    newPi[0:self.n, 0:self.n] = pi_subarray
+
+                    pi_subarray = newPi[self.n:, self.n:]
+                    new_subarray = np.fliplr(pi_subarray)
+                    newPi[self.n:, self.n:] = pi_subarray
+                l += [(newB, list(newPi.ravel()))]
         return l
 
     def stringRepresentation(self, board):
-        return board.tostring()
+        return np.array2string(board)
 
     def stringRepresentationReadable(self, board):
         board_s = "".join(
             self.square_content[square] for row in board for square in row
         )
         return board_s
-
-    def getScore(self, board, player):
-        b = Board(self.n)
-        b.stones = np.copy(board)
-        return b.countDiff(player)
 
     @staticmethod
     def display(board):
@@ -120,8 +135,8 @@ class LinesGame(Game):
         for y in range(n):
             print(y, "|", end="")  # print the row #
             for x in range(n):
-                piece = board[y][x]  # get the piece to print
-                print(OthelloGame.square_content[piece], end=" ")
+                piece = board[x][y]  # get the piece to print
+                print(LinesGame.square_content[piece], end=" ")
             print("|")
 
         print("-----------------------")

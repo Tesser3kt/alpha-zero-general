@@ -136,7 +136,7 @@ class Board:
     def has_connected_stones(self, player):
         """Checks if a player has all stones connected."""
         G = nx.Graph()
-        player_stones = self.stones == player
+        player_stones = zip(*np.where(self.stones == player))
         for stone in player_stones:
             x, y = stone
             G.add_node((x, y))
